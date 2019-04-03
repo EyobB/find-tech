@@ -17,6 +17,7 @@ import android.os.Handler;
 import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
+import android.preference.PreferenceManager;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -50,6 +51,8 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.UUID;
+
+import static com.internalpositioning.find3.find3app.AlarmReceiverLife.context;
 
 public class MainActivity extends AppCompatActivity implements TasksAPI.Response {
 
@@ -100,7 +103,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
     }
 
     @Override
-    public void processFinished(TasksAPI.Task[] tasks) {
+    public void getFinished(TasksAPI.Task[] tasks) {
         List<TasksAPI.Task> tasksList = Arrays.asList(tasks);
         boolean isTaskModified = hasDataChanged(tasksList);
         sendListenerService.TaskListReceived(isTaskModified);
@@ -342,7 +345,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                     }
 
                     updatePreferences(familyName, find3Api, workflowApi, token, interval, deviceName, allowGPS, locationName);
-                    tasksApiUrl = workflowApi + (workflowApi.endsWith("/")?"":"/") + deviceName;
+                    tasksApiUrl = workflowApi + (workflowApi.endsWith("/")?"":"/") + "tech/" + deviceName;
 
                     startTaskMonitoring(interval, token);
 
@@ -453,11 +456,11 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
 
     private void loadPreferences() {
         // check to see if there are preferences
-        SharedPreferences sharedPref = MainActivity.this.getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());//MainActivity.this.getPreferences(Context.MODE_PRIVATE);
         familyNameEdit.setText(sharedPref.getString("familyName", "truefalses"));
         deviceNameEdit.setText(sharedPref.getString("deviceName", ""));
         find3ApiEdit.setText(sharedPref.getString("find3Api","http://13.59.114.154:8003"));
-        workflowApiEdit.setText(sharedPref.getString("workflowApi","https://teg7wev413.execute-api.us-west-2.amazonaws.com/Prod/v1/tasks/tech"));
+        workflowApiEdit.setText(sharedPref.getString("workflowApi","https://teg7wev413.execute-api.us-west-2.amazonaws.com/Prod/v1/tasks/"));
         tokenEdit.setText(sharedPref.getString("token","eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiMDZjMmUwYS0wODNjLTRmMTUtODMyNy1jOTFlNWQ1MWEyMWUiLCJydGkiOiJiMDZjMmUwYS0wODNjLTRmMTUtODMyNy1jOTFlNWQ1MWEyMWUiLCJzdWIiOiI2MWZhYTkyYi1iNDY5LTQwMmItOGE4My05NzFlMTg4YzQ5YjIiLCJnaXZlbl9uYW1lIjoiRXlvYiIsImZhbWlseV9uYW1lIjoiU3RyYXRlZ2lzdCIsInVuYW1lIjoiZXlvYnMiLCJyb2xlIjoiU3RyYXRlZ2lzdCIsImNzIjoiW1wiS1VNRURcIixcIkNIU1wiLFwiR0hTXCIsXCJDMDAyXCIsXCJDMDAxXCJdIiwiY2NpIjoiIiwidXNlIjoiUmVmcmVzaCIsIm5iZiI6MTU1NDI2MDcwNCwiZXhwIjoxNTU0Mjc1MTA0LCJpYXQiOjE1NTQyNjA3MDQsImlzcyI6Imh0dHA6Ly9wYy5vbW5pY2VsbC5jb20iLCJhdWQiOiJodHRwOi8vcGMub21uaWNlbGwuY29tIn0.zmMreZai_kbqaIXSIYcL5c_DFF7iTvPJSWiE097z-uRBGA7vUlHIFuhhOGDV1gVJqoXsKy5YSb4Ka02SNHGzlQ"));
         intervalEditText.setText(String.valueOf(sharedPref.getInt("interval",5)));
         CheckBox checkBoxAllowGPS = (CheckBox) findViewById(R.id.allowGPS);
@@ -465,7 +468,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
     }
 
     private void updatePreferences(String familyName, String find3Api, String workflowApi, String token, int interval, String deviceName, boolean allowGPS, String locationName) {
-        SharedPreferences sharedPref = MainActivity.this.getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("familyName", familyName);
         editor.putString("deviceName", deviceName);

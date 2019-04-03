@@ -1,13 +1,9 @@
 package com.internalpositioning.find3.find3app;
 
 import android.os.AsyncTask;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import com.google.gson.Gson;
-import com.loopj.android.http.AsyncHttpResponseHandler;
-import com.loopj.android.http.RequestParams;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -23,12 +19,6 @@ import java.net.MalformedURLException;
 import java.net.ProtocolException;
 import java.net.URL;
 import java.util.UUID;
-
-import org.json.*;
-
-import com.loopj.android.http.*;
-
-import cz.msebera.android.httpclient.Header;
 
 public class TasksAPI extends AsyncTask<String, Void, TasksAPI.Task[]> {
     private static final String TAG = "TasksAPI";
@@ -100,48 +90,11 @@ public class TasksAPI extends AsyncTask<String, Void, TasksAPI.Task[]> {
         } catch (JSONException e) {
             e.printStackTrace();
         }
-//        Handler mainHandler = new Handler(Looper.getMainLooper());
-//        Runnable myRunnable = new Runnable() {
-//            @Override
-//            public void run() {
-//                HttpUtils.get(url, token, new JsonHttpResponseHandler() {
-//                    @Override
-//                    public void onFailure(int statusCode, Header[] headers, Throwable t, JSONObject j) {
-//                        Log.e(TAG, "Status: " + statusCode + " EX: " + t.toString());
-//                    }
-//
-//                    @Override
-//                    public void onSuccess(int statusCode, Header[] headers, JSONArray jsonarray) {
-//                        Log.e(TAG, "Complete: " + statusCode);
-////                        if (statusCode != 200) {
-////                            return;
-////                        }
-////
-////                        Task[] tasks = new Task[jsonarray.length()];
-////                        for (int i = 0; i < jsonarray.length(); i++) {
-////                            JSONObject jsonobject = null;
-////                            try {
-////                                jsonobject = jsonarray.getJSONObject(i);
-////                            } catch (JSONException e) {
-////                                e.printStackTrace();
-////                            }
-////                            Gson gson = new Gson();
-////                            Task task = gson.fromJson(jsonobject.toString(), TasksAPI.Task.class);
-////                            tasks[i] = task;
-////                        }
-////
-////                        delegate.processFinished(tasks);
-//                    }
-//                });
-//            }
-//        };
-//        mainHandler.post(myRunnable);
-//
         return new TasksAPI.Task[0];
     }
 
     protected void onPostExecute(TasksAPI.Task[] tasks) {
-        delegate.processFinished(tasks);
+        delegate.getFinished(tasks);
     }
 
     private String convertStreamToString(InputStream is) {
@@ -215,7 +168,7 @@ public class TasksAPI extends AsyncTask<String, Void, TasksAPI.Task[]> {
     }
 
     public interface Response {
-        void processFinished(Task[] tasks);
+        void getFinished(Task[] tasks);
+
     }
 }
-

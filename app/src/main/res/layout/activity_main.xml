@@ -36,9 +36,9 @@
                         android:id="@+id/logoImageView"
                         android:layout_width="259dp"
                         android:layout_height="122dp"
-                        android:layout_gravity="right"
                         android:layout_weight="1"
                         app:srcCompat="@mipmap/omnicell" />
+
                 </LinearLayout>
 
                 <TextView
@@ -316,9 +316,7 @@
                         android:text="ToggleButton"
                         android:textColor="#78be20"
                         android:textOff="Start"
-                        android:textOn="Stop"
-                        android:focusable="true"
-                        android:focusableInTouchMode="true"/>
+                        android:textOn="Stop"/>
                 </LinearLayout>
 
                 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"

@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    <RelativeLayout
         android:layout_width="fill_parent"
         android:layout_height="?android:attr/listPreferredItemHeight"
         android:padding="6dip" android:background="@drawable/omnicell_line">
@@ -40,6 +40,16 @@
             android:gravity="center_vertical"
             android:text="Task name"
             android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/doneButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@color/colorWhite"
+            android:text="Done"
+            android:textColor="@color/omnicellGreen"
+            android:layout_alignParentRight="true"
+            />
 
     </RelativeLayout>
 </LinearLayout>
