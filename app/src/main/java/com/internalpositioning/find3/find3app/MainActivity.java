@@ -2,29 +2,24 @@ package com.internalpositioning.find3.find3app;
 
 import android.Manifest;
 import android.app.AlarmManager;
-import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.location.Location;
-import android.location.LocationManager;
-import android.net.wifi.ScanResult;
-import android.net.wifi.WifiManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.SystemClock;
-import android.support.v4.app.ActivityCompat;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.support.v4.app.NotificationCompat;
-import android.text.TextUtils;
 import android.text.util.Linkify;
 import android.util.Log;
 import android.view.View;
@@ -33,27 +28,33 @@ import android.widget.AutoCompleteTextView;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.SimpleAdapter;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements TasksAPI.Response {
 
     // logging
     private final String TAG = "MainActivity";
-
 
     // background manager
     private PendingIntent recurringLl24 = null;
@@ -63,7 +64,24 @@ public class MainActivity extends AppCompatActivity {
     Timer timer = null;
     private RemindTask oneSecondTimer = null;
 
-    private String[] autocompleteLocations = new String[] {"bedroom","living room","kitchen","bathroom", "office"};
+    private String[] autocompleteLocations = new String[] {"Central-Pharmacy","Omni-south"};
+
+    EditText find3ApiEdit;
+    EditText workflowApiEdit;
+    EditText tokenEdit;
+    EditText intervalEditText;
+    TextView currentLocationTextView;
+    LinearLayout advancedOptionsContainer;
+    ToggleButton toggleScanType;
+    TextView textTasks;
+    EditText familyNameEdit;
+    EditText deviceNameEdit;
+
+    SendListener sendListenerService;
+    String tasksApiUrl;
+    TaskListAdapter taskListAdapter;
+
+    MainActivity thisInstance;
 
     @Override
     protected void onDestroy() {
@@ -78,6 +96,34 @@ public class MainActivity extends AppCompatActivity {
         Intent scanService = new Intent(this, ScanService.class);
         stopService(scanService);
         super.onDestroy();
+    }
+
+    @Override
+    public void processFinished(TasksAPI.Task[] tasks) {
+        Toast.makeText(getApplicationContext(),"Tasks updated.", Toast.LENGTH_SHORT).show();
+        List<TasksAPI.Task> tasksList = Arrays.asList(tasks);
+        boolean isTaskModified = hasDataChanged(tasksList);
+        if(isTaskModified) {
+            taskListAdapter.setTasks(tasksList);
+            taskListAdapter.notifyDataSetChanged();
+            try {
+                Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                // Vibrate for 500 milliseconds
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    v.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    //deprecated in API 26
+                    v.vibrate(500);
+                }
+
+
+                Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
+                r.play();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     class RemindTask extends TimerTask {
@@ -108,7 +154,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -120,27 +165,62 @@ public class MainActivity extends AppCompatActivity {
             requestPermissions(new String[]{Manifest.permission.WAKE_LOCK, Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.INTERNET, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_ADMIN, Manifest.permission.CHANGE_WIFI_STATE, Manifest.permission.ACCESS_WIFI_STATE}, 1);
         }
 
+        intervalEditText = (EditText)findViewById(R.id.intervalEditText);
+        currentLocationTextView =  (TextView)findViewById(R.id.currentLocation);
+        familyNameEdit = (EditText) findViewById(R.id.familyName);
+        deviceNameEdit = (EditText) findViewById(R.id.deviceName);
+        find3ApiEdit = (EditText) findViewById(R.id.serverAddress);
+        workflowApiEdit = (EditText) findViewById(R.id.workflowApi);
+        tokenEdit = (EditText) findViewById(R.id.token);
+        advancedOptionsContainer = (LinearLayout)findViewById(R.id.advancedOptionsContainer);
+        toggleScanType = (ToggleButton)findViewById(R.id.toggleScanType);
+        textTasks = (TextView)findViewById(R.id.textTasks);
+
+        sendListenerService = new SendListener() {
+            @Override
+            public void Sent(Date date, int wifiLength) {
+                SimpleDateFormat sdfDate = new SimpleDateFormat("HH:mm:ss");//dd/MM/yyyy
+                Date now = new Date();
+                String nowString = sdfDate.format(now);
+                //((TextView)findViewById(R.id.textTasks)).append(nowString + ": Data sent: "+ wifiLength +" \n");
+                Log.i(TAG, nowString + ": Data sent: "+ wifiLength);
+
+            }
+
+            @Override
+            public void Acked(Date date) {
+                SimpleDateFormat sdfDate = new SimpleDateFormat("HH:mm:ss");//dd/MM/yyyy
+                Date now = new Date();
+                String nowString = sdfDate.format(now);
+                //((TextView)findViewById(R.id.textTasks)).append(nowString + ": Data acknowledged"+" \n");
+                Log.i(TAG, nowString + ": Data acknowledged");
+            }
+
+            @Override
+            public void ScanStarted(Date date) {
+                SimpleDateFormat sdfDate = new SimpleDateFormat("HH:mm:ss");//dd/MM/yyyy
+                Date now = new Date();
+                String nowString = sdfDate.format(now);
+                //((TextView)findViewById(R.id.textTasks)).append(nowString + ": Scan started"+" \n");
+                Log.i(TAG, nowString + ": Scan started");
+
+            }
+        };
+        Broadcaster broadcaster = new Broadcaster();
+        broadcaster.addListener(sendListenerService);
+
         TextView rssi_msg = (TextView) findViewById(R.id.textOutput);
         rssi_msg.setText("not running");
 
-
-        // check to see if there are preferences
-        SharedPreferences sharedPref = MainActivity.this.getPreferences(Context.MODE_PRIVATE);
-        EditText familyNameEdit = (EditText) findViewById(R.id.familyName);
-        familyNameEdit.setText(sharedPref.getString("familyName", ""));
-        EditText deviceNameEdit = (EditText) findViewById(R.id.deviceName);
-        deviceNameEdit.setText(sharedPref.getString("deviceName", ""));
-        EditText serverAddressEdit = (EditText) findViewById(R.id.serverAddress);
-        serverAddressEdit.setText(sharedPref.getString("serverAddress", ((EditText) findViewById(R.id.serverAddress)).getText().toString()));
-        CheckBox checkBoxAllowGPS = (CheckBox) findViewById(R.id.allowGPS);
-        checkBoxAllowGPS.setChecked(sharedPref.getBoolean("allowGPS",false));
-
+        loadPreferences();
+        setupTaskList();
 
         AutoCompleteTextView textView = (AutoCompleteTextView) findViewById(R.id.locationName);
         ArrayAdapter<String> adapter =
                 new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, autocompleteLocations);
         textView.setAdapter(adapter);
 
+        thisInstance = this;
 
         ToggleButton toggleButtonTracking = (ToggleButton) findViewById(R.id.toggleScanType);
         toggleButtonTracking.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -159,6 +239,25 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        findViewById(R.id.logoImageView).setOnClickListener(new DoubleClickListener() {
+            @Override
+            public void onSingleClick(View v) {
+
+            }
+
+            @Override
+            public void onDoubleClick(View v) {
+                if(advancedOptionsContainer.getVisibility() == View.VISIBLE) {
+                    advancedOptionsContainer.setVisibility(View.GONE);
+                    toggleScanType.setVisibility(View.GONE);
+                }
+                else{
+                    advancedOptionsContainer.setVisibility(View.VISIBLE);
+                    toggleScanType.setVisibility(View.VISIBLE);
+                }
+            }
+        });
+
         ToggleButton toggleButton = (ToggleButton) findViewById(R.id.toggleButton);
         toggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -172,23 +271,49 @@ public class MainActivity extends AppCompatActivity {
                         return;
                     }
 
-                    String serverAddress = ((EditText) findViewById(R.id.serverAddress)).getText().toString().toLowerCase();
-                    if (serverAddress.equals("")) {
-                        rssi_msg.setText("server address cannot be empty");
+                    String find3Api = find3ApiEdit.getText().toString();
+                    if (find3Api.equals("")) {
+                        rssi_msg.setText("Find3 address cannot be empty");
                         buttonView.toggle();
                         return;
                     }
-                    if (serverAddress.contains("http")!=true) {
-                        rssi_msg.setText("must include http or https in server name");
+                    if (find3Api.contains("http")!=true) {
+                        rssi_msg.setText("Find3 address must include http or https in server name");
                         buttonView.toggle();
                         return;
                     }
+
+                    final String workflowApi = workflowApiEdit.getText().toString();
+                    if (workflowApi.equals("")) {
+                        rssi_msg.setText("Workflow address cannot be empty");
+                        buttonView.toggle();
+                        return;
+                    }
+                    if (workflowApi.contains("http")!=true) {
+                        rssi_msg.setText("Workflow address must include http or https in server name");
+                        buttonView.toggle();
+                        return;
+                    }
+
+                    int interval = getInteger(intervalEditText.getText().toString(), -1);
+                    if (interval < 1) {
+                        rssi_msg.setText("interval must be a positive integer.");
+                        return;
+                    }
+
+                    final String token = tokenEdit.getText().toString();
+                    if (token.equals("")) {
+                        rssi_msg.setText("Token cannot be empty");
+                        return;
+                    }
+
                     String deviceName = ((EditText) findViewById(R.id.deviceName)).getText().toString().toLowerCase();
                     if (deviceName.equals("")) {
                         rssi_msg.setText("device name cannot be empty");
                         buttonView.toggle();
                         return;
                     }
+
                     boolean allowGPS = ((CheckBox) findViewById(R.id.allowGPS)).isChecked();
                     Log.d(TAG,"allowGPS is checked: "+allowGPS);
                     String locationName = ((EditText) findViewById(R.id.locationName)).getText().toString().toLowerCase();
@@ -204,14 +329,10 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
 
-                    SharedPreferences sharedPref = MainActivity.this.getPreferences(Context.MODE_PRIVATE);
-                    SharedPreferences.Editor editor = sharedPref.edit();
-                    editor.putString("familyName", familyName);
-                    editor.putString("deviceName", deviceName);
-                    editor.putString("serverAddress", serverAddress);
-                    editor.putString("locationName", locationName);
-                    editor.putBoolean("allowGPS",allowGPS);
-                    editor.commit();
+                    updatePreferences(familyName, find3Api, workflowApi, token, interval, deviceName, allowGPS, locationName);
+                    tasksApiUrl = workflowApi + (workflowApi.endsWith("/")?"":"/") + deviceName;
+
+                    startTaskMonitoring(interval, token);
 
                     rssi_msg.setText("running");
                     // 24/7 alarm
@@ -219,13 +340,14 @@ public class MainActivity extends AppCompatActivity {
                     Log.d(TAG, "setting familyName to [" + familyName + "]");
                     ll24.putExtra("familyName", familyName);
                     ll24.putExtra("deviceName", deviceName);
-                    ll24.putExtra("serverAddress", serverAddress);
+                    ll24.putExtra("serverAddress", find3Api);
                     ll24.putExtra("locationName", locationName);
                     ll24.putExtra("allowGPS",allowGPS);
+
                     recurringLl24 = PendingIntent.getBroadcast(MainActivity.this, 0, ll24, PendingIntent.FLAG_CANCEL_CURRENT);
                     alarms = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-                    alarms.setRepeating(AlarmManager.RTC_WAKEUP, SystemClock.currentThreadTimeMillis(), 60000, recurringLl24);
-                    timer = new Timer();
+                    alarms.setRepeating(AlarmManager.RTC_WAKEUP, SystemClock.currentThreadTimeMillis(), 10000, recurringLl24);
+                    Timer timer = new Timer();
                     oneSecondTimer = new RemindTask();
                     timer.scheduleAtFixedRate(oneSecondTimer, 1000, 1000);
                     connectWebSocket();
@@ -249,9 +371,8 @@ public class MainActivity extends AppCompatActivity {
                             (android.app.NotificationManager) MainActivity.this.getSystemService(Context.NOTIFICATION_SERVICE);
                     notificationManager.notify(0 /* ID of notification */, notificationBuilder.build());
 
-
                     final TextView myClickableUrl = (TextView) findViewById(R.id.textInstructions);
-                    myClickableUrl.setText("See your results in realtime: " + serverAddress + "/view/location/" + familyName + "/" + deviceName);
+                    myClickableUrl.setText("See your results in realtime: " + find3Api + "/view/location/" + familyName + "/" + deviceName);
                     Linkify.addLinks(myClickableUrl, Linkify.WEB_URLS);
                 } else {
                     TextView rssi_msg = (TextView) findViewById(R.id.textOutput);
@@ -264,15 +385,126 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-
     }
 
+    private void setupTaskList() {
+
+        List<TasksAPI.Task> list = new ArrayList<TasksAPI.Task>();
+
+//        TasksAPI.Task task1 = new TasksAPI.Task();
+//        task1.setName("Move these");
+//        task1.setDescription("Move these items from there to there.");
+//        list.add(task1);
+
+        taskListAdapter = new TaskListAdapter(getBaseContext(), list);
+        final ListView listview = (ListView) findViewById(R.id.listview);
+        listview.setAdapter(taskListAdapter);
+    }
+
+    private void startTaskMonitoring(int interval, final String token) {
+        final Handler handler = new Handler();
+        Timer timer = new Timer(false);
+        TimerTask timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        TasksAPI tasksApi =  new TasksAPI();
+                        tasksApi.delegate = thisInstance;
+                        tasksApi.execute(tasksApiUrl, token);
+                    }
+                });
+            }
+        };
+        timer.scheduleAtFixedRate(timerTask, interval * 3000, interval * 1000);
+    }
+
+    private void reloadTasks(List<TasksAPI.Task> tasks) {
+        if(hasDataChanged(tasks)) {
+            taskListAdapter.setTasks(tasks);
+            taskListAdapter.notifyDataSetChanged();
+
+//            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+//                    .setSmallIcon(R.drawable.omnicelllogo)
+//                    .setContentTitle("Tasks updated")
+//                    .setContentText("Your tasks have been updated. Please take a look.")
+//                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        }
+    }
+//    private void createNotificationChannel() {
+//        // Create the NotificationChannel, but only on API 26+ because
+//        // the NotificationChannel class is new and not in the support library
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//            CharSequence name = getString(R.string.channel_name);
+//            String description = getString(R.string.channel_description);
+//            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+//            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+//            channel.setDescription(description);
+//            // Register the channel with the system; you can't change the importance
+//            // or other notification behaviors after this
+//            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+//            notificationManager.createNotificationChannel(channel);
+//        }
+//    }
+    private boolean hasDataChanged(List<TasksAPI.Task> tasks) {
+        List<TasksAPI.Task> oldTasks = taskListAdapter.getTasks();
+        final HashMap<UUID, TasksAPI.Task> oldTasksHashSet = new HashMap<>();
+        for (TasksAPI.Task t : oldTasks) {
+            oldTasksHashSet.put(t.getId(), t);
+        }
+
+        if (oldTasks.size() != tasks.size())
+            return true;
+
+        for (TasksAPI.Task task : tasks) {
+            TasksAPI.Task oldTask = oldTasksHashSet.get(task.getId());
+            if (oldTask == null)
+                return true;
+        }
+        return false;
+    }
+
+    private void loadPreferences() {
+        // check to see if there are preferences
+        SharedPreferences sharedPref = MainActivity.this.getPreferences(Context.MODE_PRIVATE);
+        familyNameEdit.setText(sharedPref.getString("familyName", "truefalses"));
+        deviceNameEdit.setText(sharedPref.getString("deviceName", ""));
+        find3ApiEdit.setText(sharedPref.getString("find3Api","http://13.59.114.154:8003"));
+        workflowApiEdit.setText(sharedPref.getString("workflowApi","https://teg7wev413.execute-api.us-west-2.amazonaws.com/Prod/v1/tasks/tech"));
+        tokenEdit.setText(sharedPref.getString("token","eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyMGQyNmZkYy1kODE1LTRiYzItOTExMy1mYjk4YzBkNTExYjciLCJydGkiOiIyMGQyNmZkYy1kODE1LTRiYzItOTExMy1mYjk4YzBkNTExYjciLCJzdWIiOiI2MWZhYTkyYi1iNDY5LTQwMmItOGE4My05NzFlMTg4YzQ5YjIiLCJnaXZlbl9uYW1lIjoiRXlvYiIsImZhbWlseV9uYW1lIjoiU3RyYXRlZ2lzdCIsInVuYW1lIjoiZXlvYnMiLCJyb2xlIjoiU3RyYXRlZ2lzdCIsImNzIjoiW1wiS1VNRURcIixcIkNIU1wiLFwiR0hTXCIsXCJDMDAyXCIsXCJDMDAxXCJdIiwiY2NpIjoiIiwidXNlIjoiUmVmcmVzaCIsIm5iZiI6MTU1NDI0NjIyMSwiZXhwIjoxNTU0MjYwNjIxLCJpYXQiOjE1NTQyNDYyMjEsImlzcyI6Imh0dHA6Ly9wYy5vbW5pY2VsbC5jb20iLCJhdWQiOiJodHRwOi8vcGMub21uaWNlbGwuY29tIn0.fHSEQOgN5dFqXTetzFG_CMoqmj-bvvo6Z6lginiD-dOm0Fe8RGdee0wJGzGXsD88iTjpX5VuwBlf0F4DrecRXQ"));
+        intervalEditText.setText(String.valueOf(sharedPref.getInt("interval",5)));
+        CheckBox checkBoxAllowGPS = (CheckBox) findViewById(R.id.allowGPS);
+        checkBoxAllowGPS.setChecked(sharedPref.getBoolean("allowGPS",false));
+    }
+
+    private void updatePreferences(String familyName, String find3Api, String workflowApi, String token, int interval, String deviceName, boolean allowGPS, String locationName) {
+        SharedPreferences sharedPref = MainActivity.this.getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.putString("familyName", familyName);
+        editor.putString("deviceName", deviceName);
+        editor.putString("find3Api", find3Api);
+        editor.putString("workflowApi", workflowApi);
+        editor.putString("token", token);
+        editor.putInt("interval", interval);
+        editor.putString("locationName", locationName);
+        editor.putBoolean("allowGPS",allowGPS);
+        editor.commit();
+    }
+
+    public static int getInteger(String number, int defaultValue){
+        int value = defaultValue;
+        try{
+            value = Integer.parseInt(number);
+        }catch(Exception e ){
+        }
+        return value;
+    }
 
     private void connectWebSocket() {
         URI uri;
         try {
-            String serverAddress = ((EditText) findViewById(R.id.serverAddress)).getText().toString();
+            String serverAddress = find3ApiEdit.getText().toString();
             String familyName = ((EditText) findViewById(R.id.familyName)).getText().toString();
             String deviceName = ((EditText) findViewById(R.id.deviceName)).getText().toString();
             serverAddress = serverAddress.replace("http", "ws");
@@ -300,6 +532,7 @@ public class MainActivity extends AppCompatActivity {
                         JSONObject json = null;
                         JSONObject fingerprint = null;
                         JSONObject sensors = null;
+                        JSONArray guesses = null;
                         JSONObject bluetooth = null;
                         JSONObject wifi = null;
                         String deviceName = "";
@@ -317,6 +550,22 @@ public class MainActivity extends AppCompatActivity {
                         } catch (Exception e) {
                             Log.d("Websocket", "json error: " + e.toString());
                         }
+
+                        try {
+                            guesses = (JSONArray) json.get("guesses");
+                            JSONObject topGuess = new JSONObject(guesses.get(0).toString());
+
+                            String currentLocation = topGuess.get("location").toString();
+                            double locationProbability = Double.parseDouble(topGuess.get("probability").toString());
+
+                            String location = "You are in: " + currentLocation + " ("+Math.round(locationProbability*100)+"%)";
+                            currentLocationTextView.setText(location);
+
+                            Log.d("Websocket", "guesses: " + guesses);
+                        } catch (Exception e) {
+                            Log.d("Websocket", "json error: " + e.toString());
+                        }
+
                         try {
                             sensors = new JSONObject(fingerprint.get("s").toString());
                             deviceName = fingerprint.get("d").toString();
@@ -386,8 +635,4 @@ public class MainActivity extends AppCompatActivity {
         };
         mWebSocketClient.connect();
     }
-
-
-
-
 }

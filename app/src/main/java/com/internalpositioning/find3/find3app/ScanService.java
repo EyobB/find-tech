@@ -1,5 +1,6 @@
 package com.internalpositioning.find3.find3app;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.Notification;
 import android.app.PendingIntent;
@@ -10,11 +11,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.IBinder;
+import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -34,15 +37,18 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by zacks on 3/2/2018.
  */
 
-public class ScanService extends Service {
+public class ScanService extends Service  {
     // logging
     private final String TAG = "ScanService";
+
+    Broadcaster broadcaster = new Broadcaster();
 
     int mStartMode;       // indicates how to behave if the service is killed
     IBinder mBinder;      // interface for clients that bind
@@ -68,6 +74,7 @@ public class ScanService extends Service {
     private String locationName = "";
     private String deviceName = "";
     private String serverAddress = "";
+    private int interval = 5;
     private boolean allowGPS = false;
 
     @Override
@@ -103,25 +110,27 @@ public class ScanService extends Service {
         super.onStartCommand(intent, flags, startId);
         deviceName = intent.getStringExtra("deviceName");
         familyName = intent.getStringExtra("familyName");
+        interval = intent.getIntExtra(  "interval", 5);
         locationName = intent.getStringExtra("locationName");
         serverAddress = intent.getStringExtra("serverAddress");
         allowGPS = intent.getBooleanExtra("allowGPS", false);
 
         Log.d(TAG, "familyName: " + familyName);
 
-        new java.util.Timer().schedule(
-                new java.util.TimerTask() {
-                    @Override
-                    public void run() {
-                        synchronized (lock) {
-                            if (isScanning == false) {
-                                doScan();
-                            }
-                        }
-                    }
-                },
-                0
-        );
+//            new java.util.Timer().schedule(
+//                    new java.util.TimerTask() {
+//                        @Override
+//                        public void run() {
+//                            synchronized (lock) {
+//                                if (isScanning == false) {
+//                                    broadcaster.ScanStarted();
+//                                    doScan();
+//                                }
+//                            }
+//                        }
+//                    },
+//                    interval * 1000
+//            );
 
 
         new java.util.Timer().schedule(
@@ -283,10 +292,7 @@ public class ScanService extends Service {
                 }
             }
         }
-    }
-
-    ;
-
+    };
 
     public void sendData() {
         try {
@@ -303,10 +309,10 @@ public class ScanService extends Service {
                 JSONObject gps = new JSONObject();
                 Location loc = getLastBestLocation();
                 if (loc != null) {
-                    gps.put("lat",loc.getLatitude());
-                    gps.put("lon",loc.getLongitude());
-                    gps.put("alt",loc.getAltitude());
-                    jsonBody.put("gps",gps);
+                    gps.put("lat", loc.getLatitude());
+                    gps.put("lon", loc.getLongitude());
+                    gps.put("alt", loc.getAltitude());
+                    jsonBody.put("gps", gps);
                 }
             }
 
@@ -317,6 +323,7 @@ public class ScanService extends Service {
                 @Override
                 public void onResponse(String response) {
                     Log.d(TAG, response);
+                    broadcaster.Acked();
                 }
             }, new Response.ErrorListener() {
                 @Override
@@ -348,7 +355,7 @@ public class ScanService extends Service {
                     return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
                 }
             };
-
+            broadcaster.Sent(wifiResults.length());
             queue.add(stringRequest);
         } catch (JSONException e) {
             e.printStackTrace();
@@ -362,6 +369,16 @@ public class ScanService extends Service {
         LocationManager mLocationManager = (LocationManager)
                 getSystemService(Context.LOCATION_SERVICE);
 
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            //return TODO;
+        }
         Location locationGPS = mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
         Location locationNet = mLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 

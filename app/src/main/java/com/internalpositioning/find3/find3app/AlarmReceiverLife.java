@@ -21,6 +21,8 @@ public class AlarmReceiverLife extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         Log.v(TAG, "Recurring alarm");
 
+        ActivityManager am = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
+
         // get data
         String familyName = intent.getStringExtra("familyName");
         String deviceName = intent.getStringExtra("deviceName");

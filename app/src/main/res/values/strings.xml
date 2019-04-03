@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">FIND3 Scanner</string>
+    <string name="app_name">Pharm Tech App</string>
+    <string name="serverAddress">FIND3 Scanner</string>
 </resources>
