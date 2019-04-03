@@ -6,4 +6,5 @@ public interface SendListener{
     void Sent(Date date, int wifiLength);
     void Acked(Date date);
     void ScanStarted(Date date);
+    void TaskListReceived(boolean hasNewTasks);
 }

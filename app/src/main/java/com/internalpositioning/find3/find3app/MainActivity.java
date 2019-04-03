@@ -73,9 +73,10 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
     TextView currentLocationTextView;
     LinearLayout advancedOptionsContainer;
     ToggleButton toggleScanType;
-    TextView textTasks;
     EditText familyNameEdit;
     EditText deviceNameEdit;
+    TextView textTasks;
+    TextView textOutput;
 
     SendListener sendListenerService;
     String tasksApiUrl;
@@ -100,22 +101,19 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
 
     @Override
     public void processFinished(TasksAPI.Task[] tasks) {
-        Toast.makeText(getApplicationContext(),"Tasks updated.", Toast.LENGTH_SHORT).show();
         List<TasksAPI.Task> tasksList = Arrays.asList(tasks);
         boolean isTaskModified = hasDataChanged(tasksList);
+        sendListenerService.TaskListReceived(isTaskModified);
         if(isTaskModified) {
             taskListAdapter.setTasks(tasksList);
             taskListAdapter.notifyDataSetChanged();
             try {
                 Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-                // Vibrate for 500 milliseconds
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     v.vibrate(VibrationEffect.createOneShot(500, VibrationEffect.DEFAULT_AMPLITUDE));
                 } else {
-                    //deprecated in API 26
                     v.vibrate(500);
                 }
-
 
                 Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
                 Ringtone r = RingtoneManager.getRingtone(getApplicationContext(), notification);
@@ -175,6 +173,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
         advancedOptionsContainer = (LinearLayout)findViewById(R.id.advancedOptionsContainer);
         toggleScanType = (ToggleButton)findViewById(R.id.toggleScanType);
         textTasks = (TextView)findViewById(R.id.textTasks);
+        textOutput = (TextView)findViewById(R.id.textOutput);
 
         sendListenerService = new SendListener() {
             @Override
@@ -204,6 +203,15 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                 ((TextView)findViewById(R.id.textTasks)).append(nowString + ": Scan started"+" \n");
                 Log.i(TAG, nowString + ": Scan started");
 
+            }
+
+            @Override
+            public void TaskListReceived (boolean isModified) {
+                SimpleDateFormat sdfDate = new SimpleDateFormat("HH:mm:ss");//dd/MM/yyyy
+                Date now = new Date();
+                String nowString = sdfDate.format(now);
+                ((TextView)findViewById(R.id.textTasks)).append(nowString + ": Task list received. "+ (isModified?"There are changes.":"")+" \n");
+                Log.i(TAG, nowString + ": Task list received. There are changes.");
             }
         };
         Broadcaster broadcaster = new Broadcaster();
@@ -250,10 +258,14 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                 if(advancedOptionsContainer.getVisibility() == View.VISIBLE) {
                     advancedOptionsContainer.setVisibility(View.GONE);
                     toggleScanType.setVisibility(View.GONE);
+                    textTasks.setVisibility(View.GONE);
+                    textOutput.setVisibility(View.GONE);
                 }
                 else{
                     advancedOptionsContainer.setVisibility(View.VISIBLE);
                     toggleScanType.setVisibility(View.VISIBLE);
+                    textTasks.setVisibility(View.VISIBLE);
+                    textOutput.setVisibility(View.VISIBLE);
                 }
             }
         });
@@ -347,8 +359,8 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                     recurringLl24 = PendingIntent.getBroadcast(MainActivity.this, 0, ll24, PendingIntent.FLAG_CANCEL_CURRENT);
                     alarms = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
                     alarms.setRepeating(AlarmManager.RTC_WAKEUP, SystemClock.currentThreadTimeMillis(), 10000, recurringLl24);
-                    Timer timer = new Timer();
                     oneSecondTimer = new RemindTask();
+                    timer = new Timer();
                     timer.scheduleAtFixedRate(oneSecondTimer, 1000, 1000);
                     connectWebSocket();
 
@@ -411,7 +423,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                 });
             }
         };
-        timer.scheduleAtFixedRate(timerTask, interval * 3000, interval * 1000);
+        timer.scheduleAtFixedRate(timerTask, 50, interval * 1000);
     }
 
     private void reloadTasks(List<TasksAPI.Task> tasks) {
@@ -446,7 +458,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
         deviceNameEdit.setText(sharedPref.getString("deviceName", ""));
         find3ApiEdit.setText(sharedPref.getString("find3Api","http://13.59.114.154:8003"));
         workflowApiEdit.setText(sharedPref.getString("workflowApi","https://teg7wev413.execute-api.us-west-2.amazonaws.com/Prod/v1/tasks/tech"));
-        tokenEdit.setText(sharedPref.getString("token","eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyMGQyNmZkYy1kODE1LTRiYzItOTExMy1mYjk4YzBkNTExYjciLCJydGkiOiIyMGQyNmZkYy1kODE1LTRiYzItOTExMy1mYjk4YzBkNTExYjciLCJzdWIiOiI2MWZhYTkyYi1iNDY5LTQwMmItOGE4My05NzFlMTg4YzQ5YjIiLCJnaXZlbl9uYW1lIjoiRXlvYiIsImZhbWlseV9uYW1lIjoiU3RyYXRlZ2lzdCIsInVuYW1lIjoiZXlvYnMiLCJyb2xlIjoiU3RyYXRlZ2lzdCIsImNzIjoiW1wiS1VNRURcIixcIkNIU1wiLFwiR0hTXCIsXCJDMDAyXCIsXCJDMDAxXCJdIiwiY2NpIjoiIiwidXNlIjoiUmVmcmVzaCIsIm5iZiI6MTU1NDI0NjIyMSwiZXhwIjoxNTU0MjYwNjIxLCJpYXQiOjE1NTQyNDYyMjEsImlzcyI6Imh0dHA6Ly9wYy5vbW5pY2VsbC5jb20iLCJhdWQiOiJodHRwOi8vcGMub21uaWNlbGwuY29tIn0.fHSEQOgN5dFqXTetzFG_CMoqmj-bvvo6Z6lginiD-dOm0Fe8RGdee0wJGzGXsD88iTjpX5VuwBlf0F4DrecRXQ"));
+        tokenEdit.setText(sharedPref.getString("token","eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiMDZjMmUwYS0wODNjLTRmMTUtODMyNy1jOTFlNWQ1MWEyMWUiLCJydGkiOiJiMDZjMmUwYS0wODNjLTRmMTUtODMyNy1jOTFlNWQ1MWEyMWUiLCJzdWIiOiI2MWZhYTkyYi1iNDY5LTQwMmItOGE4My05NzFlMTg4YzQ5YjIiLCJnaXZlbl9uYW1lIjoiRXlvYiIsImZhbWlseV9uYW1lIjoiU3RyYXRlZ2lzdCIsInVuYW1lIjoiZXlvYnMiLCJyb2xlIjoiU3RyYXRlZ2lzdCIsImNzIjoiW1wiS1VNRURcIixcIkNIU1wiLFwiR0hTXCIsXCJDMDAyXCIsXCJDMDAxXCJdIiwiY2NpIjoiIiwidXNlIjoiUmVmcmVzaCIsIm5iZiI6MTU1NDI2MDcwNCwiZXhwIjoxNTU0Mjc1MTA0LCJpYXQiOjE1NTQyNjA3MDQsImlzcyI6Imh0dHA6Ly9wYy5vbW5pY2VsbC5jb20iLCJhdWQiOiJodHRwOi8vcGMub21uaWNlbGwuY29tIn0.zmMreZai_kbqaIXSIYcL5c_DFF7iTvPJSWiE097z-uRBGA7vUlHIFuhhOGDV1gVJqoXsKy5YSb4Ka02SNHGzlQ"));
         intervalEditText.setText(String.valueOf(sharedPref.getInt("interval",5)));
         CheckBox checkBoxAllowGPS = (CheckBox) findViewById(R.id.allowGPS);
         checkBoxAllowGPS.setChecked(sharedPref.getBoolean("allowGPS",false));

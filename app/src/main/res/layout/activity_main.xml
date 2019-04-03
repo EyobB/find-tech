@@ -150,8 +150,9 @@
                             android:layout_height="wrap_content"
                             android:ems="10"
                             android:gravity="left"
+                            android:inputType="textUri|textPersonName"
                             android:textColor="@color/omnicellGreen"
-                            android:inputType="textUri|textPersonName" />
+                            android:focusable="false"/>
                     </LinearLayout>
 
                     <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -258,9 +259,9 @@
                             android:layout_height="wrap_content"
                             android:ems="10"
                             android:gravity="left"
-                            android:textColor="@color/omnicellGreen"
                             android:inputType="textUri|textPersonName"
                             android:text="5"
+                            android:textColor="@color/omnicellGreen"
                             android:textSize="12sp" />
                     </LinearLayout>
 
@@ -316,6 +317,24 @@
                         android:textOn="Stop" />
                 </LinearLayout>
 
+                <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                    android:id="@+id/layoutLogs"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/textOutput"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="24dp"
+                        android:paddingRight="24dp" />
+                </LinearLayout>
+
                 <LinearLayout
                     android:id="@+id/relLayout13"
                     android:layout_width="match_parent"
@@ -329,41 +348,22 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:paddingLeft="24dp"
-                        android:paddingRight="24dp" />
+                        android:paddingRight="24dp"
+                        android:visibility="gone" />
 
                     <TextView
                         android:id="@+id/tasksLabel"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
+                        android:paddingLeft="15dp"
                         android:text="Assigned tasks:"
                         android:textColor="#78be20"
                         android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:paddingLeft="15dp" />
+                        android:textStyle="bold" />
                     <ListView xmlns:android="http://schemas.android.com/apk/res/android"
                         android:id="@+id/listview"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:divider="@color/omnicellGreen"
-                        android:dividerHeight="4px"/>
-                </LinearLayout>
-
-                <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-                    android:id="@+id/relLayout12"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:paddingTop="10dp"
-                    android:paddingBottom="10dp"
-                    android:visibility="visible">
-
-                    <TextView
-                        android:id="@+id/textOutput"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:paddingLeft="24dp"
-                        android:paddingRight="24dp" />
+                        android:layout_height="wrap_content"/>
                 </LinearLayout>
             </LinearLayout>
         </TableLayout>
