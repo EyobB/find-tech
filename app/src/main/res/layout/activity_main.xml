@@ -77,7 +77,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true">
 
                     <TextView
                         android:id="@+id/deviceLabel"
@@ -314,7 +316,9 @@
                         android:text="ToggleButton"
                         android:textColor="#78be20"
                         android:textOff="Start"
-                        android:textOn="Stop" />
+                        android:textOn="Stop"
+                        android:focusable="true"
+                        android:focusableInTouchMode="true"/>
                 </LinearLayout>
 
                 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
