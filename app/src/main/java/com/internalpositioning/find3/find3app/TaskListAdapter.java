@@ -43,7 +43,6 @@ public class TaskListAdapter extends ArrayAdapter<TasksAPI.Task> {
         nameView.setText(task.getName());
         descriptionView.setText(task.getDescription());
 
-        // change the icon for Windows and iPhone
         imageView.setImageResource(R.drawable.omnicelllogo);
 
         return rowView;

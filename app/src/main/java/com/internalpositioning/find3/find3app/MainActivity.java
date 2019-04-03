@@ -182,7 +182,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                 SimpleDateFormat sdfDate = new SimpleDateFormat("HH:mm:ss");//dd/MM/yyyy
                 Date now = new Date();
                 String nowString = sdfDate.format(now);
-                //((TextView)findViewById(R.id.textTasks)).append(nowString + ": Data sent: "+ wifiLength +" \n");
+                ((TextView)findViewById(R.id.textTasks)).append(nowString + ": Data sent: "+ wifiLength +" \n");
                 Log.i(TAG, nowString + ": Data sent: "+ wifiLength);
 
             }
@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                 SimpleDateFormat sdfDate = new SimpleDateFormat("HH:mm:ss");//dd/MM/yyyy
                 Date now = new Date();
                 String nowString = sdfDate.format(now);
-                //((TextView)findViewById(R.id.textTasks)).append(nowString + ": Data acknowledged"+" \n");
+                ((TextView)findViewById(R.id.textTasks)).append(nowString + ": Data acknowledged"+" \n");
                 Log.i(TAG, nowString + ": Data acknowledged");
             }
 
@@ -201,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
                 SimpleDateFormat sdfDate = new SimpleDateFormat("HH:mm:ss");//dd/MM/yyyy
                 Date now = new Date();
                 String nowString = sdfDate.format(now);
-                //((TextView)findViewById(R.id.textTasks)).append(nowString + ": Scan started"+" \n");
+                ((TextView)findViewById(R.id.textTasks)).append(nowString + ": Scan started"+" \n");
                 Log.i(TAG, nowString + ": Scan started");
 
             }
@@ -390,12 +390,6 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
     private void setupTaskList() {
 
         List<TasksAPI.Task> list = new ArrayList<TasksAPI.Task>();
-
-//        TasksAPI.Task task1 = new TasksAPI.Task();
-//        task1.setName("Move these");
-//        task1.setDescription("Move these items from there to there.");
-//        list.add(task1);
-
         taskListAdapter = new TaskListAdapter(getBaseContext(), list);
         final ListView listview = (ListView) findViewById(R.id.listview);
         listview.setAdapter(taskListAdapter);
@@ -424,29 +418,9 @@ public class MainActivity extends AppCompatActivity implements TasksAPI.Response
         if(hasDataChanged(tasks)) {
             taskListAdapter.setTasks(tasks);
             taskListAdapter.notifyDataSetChanged();
-
-//            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-//                    .setSmallIcon(R.drawable.omnicelllogo)
-//                    .setContentTitle("Tasks updated")
-//                    .setContentText("Your tasks have been updated. Please take a look.")
-//                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
         }
     }
-//    private void createNotificationChannel() {
-//        // Create the NotificationChannel, but only on API 26+ because
-//        // the NotificationChannel class is new and not in the support library
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//            CharSequence name = getString(R.string.channel_name);
-//            String description = getString(R.string.channel_description);
-//            int importance = NotificationManager.IMPORTANCE_DEFAULT;
-//            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
-//            channel.setDescription(description);
-//            // Register the channel with the system; you can't change the importance
-//            // or other notification behaviors after this
-//            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-//            notificationManager.createNotificationChannel(channel);
-//        }
-//    }
+
     private boolean hasDataChanged(List<TasksAPI.Task> tasks) {
         List<TasksAPI.Task> oldTasks = taskListAdapter.getTasks();
         final HashMap<UUID, TasksAPI.Task> oldTasksHashSet = new HashMap<>();
